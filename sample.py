@@ -36,12 +36,9 @@ def main(checkpoint_path: str,
     else:
         utils.load_state(checkpoint_path=checkpoint_path, model=model)
 
-    image_size = config["image_size"]
-    scale = 2 ** len(model.nwds)
-    coarse_shape = [image_size[0] // scale, image_size[1] // scale]
     num_batches = math.ceil(num_samples / batch_size)
     for _ in range(num_batches):
-        imgs = th.randn(batch_size, config["num_channels"], *coarse_shape, device=device)
+        imgs = th.randn(batch_size, config["num_channels"], *config["image_size"], device=device)
         imgs = model.sample(imgs, steps=steps, eta=eta)
         for img in imgs:
             tv.utils.save_image(img,
