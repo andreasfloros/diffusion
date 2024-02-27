@@ -1,5 +1,5 @@
 num_channels: 3
-image_size: [256, 256]
+image_size: [32, 32]
 learning_rate: 0.0001
 ema_decay: 0.9999
 horizontal_flip: True
