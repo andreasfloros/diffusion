@@ -1,3 +1,4 @@
+import json
 import modules
 import time
 import torch as th
@@ -10,7 +11,6 @@ import torch.distributed as dist
 from typing import Optional
 import utils
 import os
-import yaml
 
 
 def main(rank: int,
@@ -18,7 +18,7 @@ def main(rank: int,
          batch_size: int,
          epochs: int,
          load_path: Optional[str],
-         yaml_path: str,
+         config_path: str,
          save_path: str,
          data_path: str,
          num_workers: int,
@@ -30,8 +30,8 @@ def main(rank: int,
     dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
     th.cuda.set_device(rank)
 
-    with open(yaml_path, "r") as f:
-        config = yaml.safe_load(f)
+    with open(config_path, "r") as f:
+        config = json.load(f)
 
     transform = []
     if config["horizontal_flip"]:
@@ -59,7 +59,7 @@ def main(rank: int,
         ema = th.optim.swa_utils.AveragedModel(model,
                                                multi_avg_fn=th.optim.swa_utils.get_ema_multi_avg_fn(
                                                    config["ema_decay"]))
-        print(f"Loaded {yaml_path} model with {utils.count_parameters(model)} parameters.")
+        print(f"Loaded {config_path} model with {utils.count_parameters(model)} parameters.")
     else:
         ema = None
     model = DDP(model, device_ids=[rank])
@@ -91,6 +91,7 @@ def main(rank: int,
                 raise RuntimeError("Loss is not finite.")
 
             loss.backward()
+            th.nn.utils.clip_grad_norm_(model.parameters(), config["grad_clip"])
             optim.step()
             if rank == 0:
                 ema.update_parameters(model)
@@ -111,27 +112,27 @@ def main(rank: int,
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--bs", type=int, default=1, help="batch size (per gpu)")
-    parser.add_argument("--nw", type=int, default=0, help="number of workers (per gpu)")
-    parser.add_argument("--e", type=int, default=1, help="epochs")
-    parser.add_argument("--p2l", type=str, default=None, help="path to load")
-    parser.add_argument("--p2y", type=str, required=True, help="path to yaml")
-    parser.add_argument("--p2s", type=str, required=True, help="path to save")
-    parser.add_argument("--p2d", type=str, required=True, help="path to data")
+    parser.add_argument("--batch_size", type=int, default=1, help="batch size (per gpu)")
+    parser.add_argument("--num_workers", type=int, default=0, help="number of workers (per gpu)")
+    parser.add_argument("--epochs", type=int, default=1, help="epochs")
+    parser.add_argument("--checkpoint_path", type=str, default=None, help="path to load")
+    parser.add_argument("--config_path", type=str, required=True, help="path to config")
+    parser.add_argument("--save_path", type=str, required=True, help="path to save")
+    parser.add_argument("--data_path", type=str, required=True, help="path to data")
     parser.add_argument("--port", type=str, default="12355", help="port")
-    parser.add_argument("--se", type=int, default=1, help="save every n epochs")
+    parser.add_argument("--save_every", type=int, default=1, help="save every n epochs")
     args = parser.parse_args()
 
     world_size = th.cuda.device_count()
     mp.spawn(main,
              args=(world_size,
-                   args.bs,
-                   args.e,
-                   args.p2l,
-                   args.p2y,
-                   args.p2s,
-                   args.p2d,
-                   args.nw,
+                   args.batch_size,
+                   args.epochs,
+                   args.load_path,
+                   args.config_path,
+                   args.save_path,
+                   args.data_path,
+                   args.num_workers,
                    args.port,
-                   args.se),
+                   args.save_every),
              nprocs=world_size)

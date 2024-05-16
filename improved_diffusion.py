@@ -1,3 +1,5 @@
+# Adapted from https://github.com/openai/improved-diffusion
+
 from abc import abstractmethod
 
 import math

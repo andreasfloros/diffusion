@@ -1,3 +1,4 @@
+import json
 import math
 import modules
 import os
@@ -6,12 +7,11 @@ import torchvision as tv
 from typing import Optional
 import utils
 import uuid
-import yaml
 
 
 @th.inference_mode()
 def main(checkpoint_path: str,
-         yaml_path: str,
+         config_path: str,
          out_path: str,
          num_samples: int,
          batch_size: int,
@@ -20,8 +20,8 @@ def main(checkpoint_path: str,
          steps: Optional[int]) -> None:
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
 
-    with open(yaml_path, "r") as f:
-        config = yaml.safe_load(f)
+    with open(config_path, "r") as f:
+        config = json.load(f)
     model = modules.Diffuser(in_channels=config["num_channels"],
                              out_channels=config["num_channels"],
                              T=config["diffuser"]["T"],
@@ -50,21 +50,21 @@ def main(checkpoint_path: str,
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ns", type=int, default=1, help="number of samples")
-    parser.add_argument("--bs", type=int, default=1, help="batch size")
-    parser.add_argument("--p2c", type=str, required=True, help="path to model checkpoint")
-    parser.add_argument("--p2y", type=str, required=True, help="path to yaml")
-    parser.add_argument("--p2o", type=str, required=True, help="path to output images")
+    parser.add_argument("--num_samples", type=int, default=1, help="number of samples")
+    parser.add_argument("--batch_size", type=int, default=1, help="batch size")
+    parser.add_argument("--checkpoint_path", type=str, required=True, help="path to model checkpoint")
+    parser.add_argument("--config_path", type=str, required=True, help="path to config")
+    parser.add_argument("--out_path", type=str, required=True, help="path to output images")
     parser.add_argument("--ema", action="store_true", help="use ema")
     parser.add_argument("--eta", type=float, default=1., help="eta")
     parser.add_argument("--steps", type=int, default=None, help="steps")
     args = parser.parse_args()
 
-    main(checkpoint_path=args.p2c,
-         yaml_path=args.p2y,
-         out_path=args.p2o,
-         num_samples=args.ns,
-         batch_size=args.bs,
+    main(checkpoint_path=args.checkpoint_path,
+         config_path=args.config_path,
+         out_path=args.out_path,
+         num_samples=args.num_samples,
+         batch_size=args.batch_size,
          use_ema=args.ema,
          eta=args.eta,
          steps=args.steps)

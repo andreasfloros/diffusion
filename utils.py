@@ -93,5 +93,6 @@ def ddim(diffuser: th.nn.Module,
         sqrt_alpha_cumprod_prev = diffuser.sqrt_alphas_cumprod[prev_t]
         sqrt_one_minus_alpha_cumprod_prev = diffuser.sqrt_one_minus_alphas_cumprod[prev_t]
 
+        # TODO: Support large variance in the diffusion process.
         std = eta * (sqrt_one_minus_alpha_cumprod_prev / sqrt_one_minus_alpha_cumprod) * th.sqrt(1 - alpha_cumprod / alpha_cumprod_prev)  # noqa: E501
         x = sqrt_alpha_cumprod_prev * x0_pred + th.sqrt(1 - alpha_cumprod_prev - std ** 2) * eps_pred + std * th.randn_like(x)  # noqa: E501
