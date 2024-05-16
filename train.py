@@ -17,7 +17,7 @@ def main(rank: int,
          world_size: int,
          batch_size: int,
          epochs: int,
-         load_path: Optional[str],
+         checkpoint_path: Optional[str],
          config_path: str,
          save_path: str,
          data_path: str,
@@ -64,13 +64,13 @@ def main(rank: int,
         ema = None
     model = DDP(model, device_ids=[rank])
     optim = th.optim.Adam(model.parameters(), lr=config["learning_rate"])
-    if load_path is not None:
-        utils.load_state(checkpoint_path=load_path,
+    if checkpoint_path is not None:
+        utils.load_state(checkpoint_path=checkpoint_path,
                          model=model.module,
                          ema=ema,
                          optimizer=optim)
         if rank == 0:
-            print(f"Resuming from {load_path}.")
+            print(f"Resuming from {checkpoint_path}.")
 
     dist.barrier()
     if rank == 0:
@@ -128,7 +128,7 @@ if __name__ == "__main__":
              args=(world_size,
                    args.batch_size,
                    args.epochs,
-                   args.load_path,
+                   args.checkpoint_path,
                    args.config_path,
                    args.save_path,
                    args.data_path,
