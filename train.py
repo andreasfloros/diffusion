@@ -55,13 +55,12 @@ def main(rank: int,
                              T=config["diffuser"]["T"],
                              linear=config["diffuser"]["linear"],
                              unet_cfg=config["diffuser"]["unet"]).to(rank)
+    ema = th.optim.swa_utils.AveragedModel(model,
+                                           multi_avg_fn=th.optim.swa_utils.get_ema_multi_avg_fn(
+                                                config["ema_decay"]))
     if rank == 0:
-        ema = th.optim.swa_utils.AveragedModel(model,
-                                               multi_avg_fn=th.optim.swa_utils.get_ema_multi_avg_fn(
-                                                   config["ema_decay"]))
         print(f"Loaded {config_path} model with {utils.count_parameters(model)} parameters.")
-    else:
-        ema = None
+
     model = DDP(model, device_ids=[rank])
     optim = th.optim.Adam(model.parameters(), lr=config["learning_rate"])
     if checkpoint_path is not None:
@@ -77,10 +76,9 @@ def main(rank: int,
         print(f"Starting training, {epochs} epochs.", flush=True)
     for epoch in range(1, epochs + 1):
         dataloader.sampler.set_epoch(epoch)
-        if rank == 0:
-            avg_loss = 0
-            th.cuda.reset_peak_memory_stats()
-            start = time.perf_counter()
+        avg_loss = 0
+        th.cuda.reset_peak_memory_stats()
+        start = time.perf_counter()
         for x, _ in dataloader:
             x = x.to(rank)
             optim.zero_grad()
@@ -93,9 +91,8 @@ def main(rank: int,
             loss.backward()
             th.nn.utils.clip_grad_norm_(model.parameters(), config["grad_clip"])
             optim.step()
-            if rank == 0:
-                ema.update_parameters(model)
-                avg_loss += loss.detach() / len(dataloader)
+            ema.update_parameters(model)
+            avg_loss += loss.detach() / len(dataloader)
         dist.barrier()
         if rank == 0:
             if epoch % save_every == 0:

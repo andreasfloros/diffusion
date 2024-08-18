@@ -1,0 +1,21 @@
+{
+    "num_channels": 3,
+    "image_size": [64, 64],
+    "learning_rate": 0.0001,
+    "grad_clip": 1.0,
+    "ema_decay": 0.9999,
+    "horizontal_flip": true,
+    "diffuser": {
+        "T": 1000,
+        "linear": false,
+        "unet": {
+            "base_channels": 128,
+            "num_res_attn_blocks": 3,
+            "channel_mults": [1, 2, 2, 4, 4],
+            "is_attn": [false, false, true, true, false, false],
+            "num_heads": 4,
+            "dropout": 0.0,
+            "use_scale_shift_norm": true
+        }
+    }
+}
